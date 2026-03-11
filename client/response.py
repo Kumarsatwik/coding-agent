@@ -27,7 +27,7 @@ class TokenUsage:
 
 class EventType(str,Enum):
     TEXT_DELTA="text_delta"
-    MESSAGE="message"
+    MESSAGE_COMPLETE="message_complete"
     ERROR="error"
     DONE="done"
 

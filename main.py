@@ -4,7 +4,7 @@ import asyncio
 async def main():
     client = LLMClient()
     messages = [{"role": "user", "content": "hello , how are you?"}]
-    async for event in client.chat_completion(messages,False):
+    async for event in client.chat_completion(messages,True):
         print(event)
 
 if __name__ == "__main__":
