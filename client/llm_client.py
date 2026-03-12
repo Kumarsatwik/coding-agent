@@ -1,7 +1,8 @@
 from openai import APIConnectionError, AsyncOpenAI, RateLimitError, APIError
-from client.response import StreamEvent, EventType, TextDelta, TokenUsage
+from client.response import StreamEvent, StreamEventType, TextDelta, TokenUsage
 from typing import Any, AsyncGenerator
 from dotenv import load_dotenv
+import asyncio
 import os
 
 load_dotenv()
@@ -45,7 +46,7 @@ class LLMClient:
                     wait_time = (2 ** attempt)
                     await asyncio.sleep(wait_time)
                 else:
-                    yield StreamEvent(type=EventType.ERROR, error=self._format_error(f"RateLimiter Error : {e}"))  
+                    yield StreamEvent.stream_error(f"RateLimitError: {self._format_error(e)}")
                     return
              
             except APIConnectionError as e:
@@ -53,14 +54,15 @@ class LLMClient:
                     wait_time = (2 ** attempt)
                     await asyncio.sleep(wait_time)
                 else:
-                    yield StreamEvent(type=EventType.ERROR, error=self._format_error(f"API Connection Error : {e}"))  
+                    yield StreamEvent.stream_error(f"APIConnectionError: {self._format_error(e)}")
                     return
 
             except APIError as e:
-                yield StreamEvent(type=EventType.ERROR, error=self._format_error(f"API Error : {e}"))  
+                yield StreamEvent.stream_error(f"APIError: {self._format_error(e)}")
                 return
             except Exception as e:
-                yield StreamEvent(type=EventType.ERROR, error=self._format_error(f"Generic Error : {e}"))
+                yield StreamEvent.stream_error(f"Exception: {self._format_error(e)}")
+                return
     
     async def _stream_response(self,client: AsyncOpenAI, kwargs: dict[str, Any])->AsyncGenerator[StreamEvent, None]:
         usage : TokenUsage | None = None
@@ -95,16 +97,16 @@ class LLMClient:
                 content = getattr(delta, "content", None) if delta else None
                 if content:
                     yield StreamEvent(
-                        type=EventType.TEXT_DELTA,
+                        type=StreamEventType.TEXT_DELTA,
                         text_delta=TextDelta(content=content),
                         usage=usage,
                         finish_reason=finish_reason,
                     )
         except Exception as err:
             had_error = True
-            yield StreamEvent(type=EventType.ERROR, error=self._format_error(err), usage=usage, finish_reason="error")
+            yield StreamEvent.stream_error(self._format_error(err), usage=usage, finish_reason="error")
 
-        yield StreamEvent(type=EventType.MESSAGE_COMPLETE, usage=usage, finish_reason=finish_reason or ("error" if had_error else "stop"))
+        yield StreamEvent(type=StreamEventType.MESSAGE_COMPLETE, usage=usage, finish_reason=finish_reason or ("error" if had_error else "stop"))
     
     async def _non_stream_response(self,client: AsyncOpenAI, kwargs: dict[str, Any]):
         usage: TokenUsage | None = None
@@ -130,15 +132,18 @@ class LLMClient:
                 )
 
             return StreamEvent(
-                type=EventType.TEXT_DELTA,
+                type=StreamEventType.TEXT_DELTA,
                 text_delta=text_delta,
                 usage=usage,
                 finish_reason=choice.finish_reason,
             )
         except Exception as err:
-            return StreamEvent(type=EventType.ERROR, error=self._format_error(err), usage=usage, finish_reason="error")
+            return StreamEvent.stream_error(self._format_error(err), usage=usage, finish_reason="error")
 
-    def _format_error(self, err: Exception)->str:
+    def _format_error(self, err: Any)->str:
+        if isinstance(err, str):
+            return err
+
         parts: list[str] = [f"{err.__class__.__name__}: {err}"]
 
         status_code = getattr(err, "status_code", None)

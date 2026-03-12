@@ -25,7 +25,7 @@ class TokenUsage:
             cached_tokens=self.cached_tokens + other.cached_tokens,
         ) 
 
-class EventType(str,Enum):
+class StreamEventType(str,Enum):
     TEXT_DELTA="text_delta"
     MESSAGE_COMPLETE="message_complete"
     ERROR="error"
@@ -33,8 +33,12 @@ class EventType(str,Enum):
 
 @dataclass
 class StreamEvent:
-    type:EventType
+    type:StreamEventType
     text_delta:TextDelta | None = None
     error:str | None = None
     finish_reason:str | None = None
     usage:TokenUsage | None = None
+
+    @classmethod
+    def stream_error(cls, error: str, *, usage: TokenUsage | None = None, finish_reason: str | None = "error"):
+        return cls(type=StreamEventType.ERROR, error=error, usage=usage, finish_reason=finish_reason)
