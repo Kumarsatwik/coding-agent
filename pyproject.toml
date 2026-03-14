@@ -9,4 +9,5 @@ dependencies = [
     "load-dotenv>=0.1.0",
     "openai>=2.26.0",
     "rich>=14.3.3",
+    "tiktoken>=0.12.0",
 ]
