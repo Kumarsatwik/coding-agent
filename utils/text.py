@@ -11,10 +11,10 @@ def get_tokenizer(model:str):
 def count_tokens(text:str,model:str)->int:
     tokenizer = get_tokenizer(model)
 
-    if tokenizer:
+    try:
         return len(tokenizer(text))
-        
-    return estimate_tokens(text)
+    except Exception:
+        return estimate_tokens(text)
 
 def estimate_tokens(text:str)->int:
     return max(1,len(text)//4)
