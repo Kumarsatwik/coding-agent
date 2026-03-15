@@ -28,7 +28,7 @@ class LLMClient:
     async def chat_completion(self, messages: list[dict[str, Any]],stream:bool=True)->AsyncGenerator[StreamEvent, None]:
         client = self.get_client()
         kwargs={
-            "model":"openai/gpt-oss-120b:free",
+            "model":os.environ.get("MODEL_NAME","openai/gpt-oss-20b:free"),
             "messages":messages,
             "stream":stream
         }

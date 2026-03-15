@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from typing import Any,List
 from prompts.system import get_system_prompt
@@ -19,7 +20,7 @@ class ContextManager:
     def __init__(self)->None:
         self._system_prompt = get_system_prompt()
         self._messages: List[MessageItem] = []
-        self._model_name='openai/gpt-oss-120b:free'
+        self._model_name=os.environ.get("MODEL_NAME",'openai/gpt-oss-20b:free')
     
     def add_user_message(self,content:str)->None:
         item = MessageItem( 
