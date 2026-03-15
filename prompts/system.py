@@ -1,38 +1,27 @@
+"""
+System prompt generation for AI coding agent.
+
+Constructs prompts defining agent behavior, capabilities, and guidelines.
+"""
 from datetime import datetime
 
+
 def get_system_prompt() -> str:
+    """Generate complete system prompt from multiple sections."""
     parts = []
 
-    # Identity and role
     parts.append(_get_identity_section())
-    # Environment
     parts.append(_get_environment_section())
 
-    # if tools:
-    #     parts.append(_get_tool_guidelines_section(tools))
-
-    # AGENTS.md spec
     parts.append(_get_agents_md_section())
-
-    # Security guidelines
     parts.append(_get_security_section())
-
-    # if config.developer_instructions:
-    #     parts.append(_get_developer_instructions_section(config.developer_instructions))
-
-    # if config.user_instructions:
-    #     parts.append(_get_user_instructions_section(config.user_instructions))
-
-    # if user_memory:
-    #     parts.append(_get_memory_section(user_memory))
-    # Operational guidelines
     parts.append(_get_operational_section())
 
     return "\n\n".join(parts)
 
 
 def _get_identity_section() -> str:
-    """Generate the identity section."""
+    """Generate identity section defining agent role."""
     return """# Identity
 
 You are an AI coding agent, a terminal-based coding assistant. You are expected to be precise, safe and helpful.
@@ -47,7 +36,7 @@ You are pair programming with the user to help them accomplish their goals. You 
 
 
 def _get_environment_section() -> str:
-    """Generate the environment section."""
+    """Generate environment section with date and shell info."""
     now = datetime.now()
 
     return f"""# Environment
@@ -59,7 +48,7 @@ The user has granted you access to run tools in service of their request. Use th
 
 
 def _get_shell_info() -> str:
-    """Get shell information based on platform."""
+    """Get shell based on platform."""
     import os
     import sys
 
@@ -72,7 +61,7 @@ def _get_shell_info() -> str:
 
 
 def _get_agents_md_section() -> str:
-    """Generate AGENTS.md spec section."""
+    """Generate AGENTS.md handling instructions."""
     return """# AGENTS.md Specification
 
 - Repos often contain AGENTS.md files. These files can appear anywhere within the repository.
@@ -88,7 +77,7 @@ def _get_agents_md_section() -> str:
 
 
 def _get_security_section() -> str:
-    """Generate security guidelines."""
+    """Generate security and safety guidelines."""
     return """# Security Guidelines
 
 1. **Never expose secrets**: Do not output API keys, passwords, tokens, or other sensitive data.
@@ -105,7 +94,7 @@ def _get_security_section() -> str:
 
 
 def _get_operational_section() -> str:
-    """Generate operational guidelines."""
+    """Generate operational and workflow guidelines."""
     return """# Operational Guidelines
 
 ## Tone and Style (CLI Interaction)

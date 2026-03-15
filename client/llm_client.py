@@ -1,3 +1,8 @@
+"""
+LLM Client for communicating with language model APIs.
+
+Provides client for LLM APIs (via OpenRouter) with streaming and retries.
+"""
 from openai import APIConnectionError, AsyncOpenAI, RateLimitError, APIError
 from client.response import StreamEvent, StreamEventType, TextDelta, TokenUsage
 from typing import Any, AsyncGenerator
@@ -5,42 +10,56 @@ from dotenv import load_dotenv
 import asyncio
 import os
 
+# Load environment variables from .env file
 load_dotenv()
 
-class LLMClient:
-    def __init__(self)->None:
-        self._client: AsyncOpenAI | None = None
-        self._max_retries:int = 3
 
-    def get_client(self)->AsyncOpenAI:
+class LLMClient:
+    """Async client for LLM APIs with streaming and retries."""
+    
+    def __init__(self) -> None:
+        """Initialize LLM client."""
+        self._client: AsyncOpenAI | None = None
+        self._max_retries: int = 3
+
+    def get_client(self) -> AsyncOpenAI:
+        """Get or initialize AsyncOpenAI client."""
         if self._client is None:
             self._client = AsyncOpenAI(
-                api_key= os.environ["API_KEY"], 
+                api_key=os.environ["API_KEY"], 
                 base_url="https://openrouter.ai/api/v1"
             )
         return self._client
 
-    async def close(self)->None:
+    async def close(self) -> None:
+        """Close client and cleanup resources."""
         if self._client is not None:
             await self._client.close()
             self._client = None 
 
-    async def chat_completion(self, messages: list[dict[str, Any]],stream:bool=True)->AsyncGenerator[StreamEvent, None]:
+    async def chat_completion(self, messages: list[dict[str, Any]], stream: bool = True, tools: list[dict[str, Any]] | None = None) -> AsyncGenerator[StreamEvent, None]:
+        """Send chat completion request with retry logic."""
         client = self.get_client()
-        kwargs={
-            "model":"openai/gpt-oss-120b:free",
-            "messages":messages,
-            "stream":stream
+        
+        kwargs = {
+            "model": os.environ.get("MODEL_NAME", "openai/gpt-oss-20b:free"),
+            "messages": messages,
+            "stream": stream
         }
-        for attempt in range(self._max_retries+1):
+
+        if tools:
+            kwargs["tools"] = tools
+        
+        for attempt in range(self._max_retries + 1):
             try:
-                if stream :
+                if stream:
                     async for event in self._stream_response(client, kwargs):
                         yield event
                 else:
                     event = await self._non_stream_response(client, kwargs)
                     yield event
                 return
+                
             except RateLimitError as e:
                 if attempt < self._max_retries:
                     wait_time = (2 ** attempt)
@@ -60,13 +79,15 @@ class LLMClient:
             except APIError as e:
                 yield StreamEvent.stream_error(f"APIError: {self._format_error(e)}")
                 return
+                
             except Exception as e:
                 yield StreamEvent.stream_error(f"Exception: {self._format_error(e)}")
                 return
     
-    async def _stream_response(self,client: AsyncOpenAI, kwargs: dict[str, Any])->AsyncGenerator[StreamEvent, None]:
-        usage : TokenUsage | None = None
-        finish_reason :str | None = None
+    async def _stream_response(self, client: AsyncOpenAI, kwargs: dict[str, Any]) -> AsyncGenerator[StreamEvent, None]:
+        """Handle streaming response from API."""
+        usage: TokenUsage | None = None
+        finish_reason: str | None = None
         had_error = False
 
         try:
@@ -102,13 +123,19 @@ class LLMClient:
                         usage=usage,
                         finish_reason=finish_reason,
                     )
+                    
         except Exception as err:
             had_error = True
             yield StreamEvent.stream_error(self._format_error(err), usage=usage, finish_reason="error")
 
-        yield StreamEvent(type=StreamEventType.MESSAGE_COMPLETE, usage=usage, finish_reason=finish_reason or ("error" if had_error else "stop"))
+        yield StreamEvent(
+            type=StreamEventType.MESSAGE_COMPLETE,
+            usage=usage,
+            finish_reason=finish_reason or ("error" if had_error else "stop")
+        )
     
-    async def _non_stream_response(self,client: AsyncOpenAI, kwargs: dict[str, Any]):
+    async def _non_stream_response(self, client: AsyncOpenAI, kwargs: dict[str, Any]):
+        """Handle non-streaming response from API."""
         usage: TokenUsage | None = None
 
         try:
@@ -137,10 +164,12 @@ class LLMClient:
                 usage=usage,
                 finish_reason=choice.finish_reason,
             )
+            
         except Exception as err:
             return StreamEvent.stream_error(self._format_error(err), usage=usage, finish_reason="error")
 
-    def _format_error(self, err: Any)->str:
+    def _format_error(self, err: Any) -> str:
+        """Format error into human-readable string."""
         if isinstance(err, str):
             return err
 
