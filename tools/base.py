@@ -1,10 +1,10 @@
 from __future__ import annotations
 import abc
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, Field
 from pydantic.json_schema import model_json_schema
 
 class ToolKind(str,Enum):
@@ -22,14 +22,12 @@ class ToolInvocation:
     params:dict[str,Any]
     cwd:Path
 
-@dataclass
-class ToolResult:
+class ToolResult(BaseModel):
     """Outcome of a tool execution."""
     success:bool
-    output:str
+    output:str | None = None
     error:str | None = None
-    metadata:dict[str,Any] = field(default_factory=dict)
-
+    metadata:dict[str,Any] = Field(default_factory=dict)
 
 
 @dataclass
@@ -38,14 +36,6 @@ class ToolConfirmation(ToolInvocation):
     tool_name:str
     params:dict[str,Any]
     description:str
-
-
-
-@dataclass
-class ToolResult(BaseModel):
-    """Result of a tool execution (BaseModel version)."""
-    success:bool
-    content:str | None = None
 
 
 class Tool(abc.ABC):
@@ -72,7 +62,7 @@ class Tool(abc.ABC):
         schema = self.schema
         if isinstance(schema, type) and issubclass(schema, BaseModel):
             try:
-                BaseModel(**params)
+                schema.model_validate(params)
             except ValidationError as e:
                 errors = []
                 for error in e.errors():
@@ -83,6 +73,10 @@ class Tool(abc.ABC):
                 return errors
             except Exception as e:
                 return [str(e)]
+        
+        if isinstance(schema, dict):
+            return ["Structural validation not implemented for dict-based schemas"]
+            
         return []
     
     def is_mutating(self, params: dict[str, Any]) -> bool:

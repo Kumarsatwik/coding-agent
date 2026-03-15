@@ -40,7 +40,12 @@ class Agent:
         """Main loop for communicating with LLM and streaming responses."""
         response_text = ""
 
-        async for event in self.client.chat_completion(self.context_manager.get_messages(), True):
+        # Send messages and tools to LLM client
+        async for event in self.client.chat_completion(
+            self.context_manager.get_messages(), 
+            True,
+            self.context_manager.get_tools()
+        ):
             if event.type == StreamEventType.TEXT_DELTA:
                 if event.text_delta:
                     content = event.text_delta.content

@@ -37,7 +37,7 @@ class LLMClient:
             await self._client.close()
             self._client = None 
 
-    async def chat_completion(self, messages: list[dict[str, Any]], stream: bool = True) -> AsyncGenerator[StreamEvent, None]:
+    async def chat_completion(self, messages: list[dict[str, Any]], stream: bool = True, tools: list[dict[str, Any]] | None = None) -> AsyncGenerator[StreamEvent, None]:
         """Send chat completion request with retry logic."""
         client = self.get_client()
         
@@ -46,6 +46,9 @@ class LLMClient:
             "messages": messages,
             "stream": stream
         }
+
+        if tools:
+            kwargs["tools"] = tools
         
         for attempt in range(self._max_retries + 1):
             try:

@@ -66,3 +66,7 @@ class ContextManager:
             messages.append(item.to_dict())
         
         return messages
+
+    def get_tools(self) -> list[dict[str, Any]]:
+        """Get tools for the agent (placeholder)."""
+        return []
